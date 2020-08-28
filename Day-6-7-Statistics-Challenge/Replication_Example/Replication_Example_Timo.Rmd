@@ -1,0 +1,409 @@
+---
+title: Language Familiarity Modulates Relative Attention to the Eyes and Mouth of a Talker
+author: "Timo Klingler"
+date: "5/22/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Research Question
+
+Does speech in an unfamiliar language cause adults to attend more to a talker's mouth?
+
+# Hypothesis
+
+We expected that the participants would attend more to the mouth in the unfamiliar than in the familiar language condition.
+
+## Stimuli
+
+- Movie recording of two female models in sound attenuated room and presented on infrared-based eye-tracking system.
+
+- 20 sentences in English, 20 sentences in other language.
+
+- Participants were presented with sequentially presented pairs of video segments, each consisting of the same person audibly uttering a short sentence, followed by an audio-only clip of one of the two sentences. Participants indicated whether the auditory-only clip was extracted from first or second movie by pressing a key on the keyboard.
+
+## Variables
+
+- *Three different datasets for each experiment*
+- Participants
+- Task
+- EyesEnglish
+- EyesIcelandic (1,3) / EyesSpanish(1,2)
+- MouthEnglish
+- MouthIcelandic (1,3) / MouthSpanish (1,2)
+
+# Experiment 1
+
+## Setup
+
+- 60 monolingual English Speakers
+  - 30 English / Icelandic
+    - 15 begin with unfamiliar Languange, 15 with familiar
+  - 30 English / Spanish
+    - 15 begin with unfamiliar Languange, 15 with familiar
+
+## Data
+
+```{r, message = FALSE}
+
+require(dplyr)
+require(tidyr)
+
+se <- function(x) 
+{
+  se <- sd(x) / sqrt(length(x))
+  return(se)
+}
+
+load("/Users/Timo/Downloads/Experiment 1_English_Icelandic.RData")
+ex1_ice <- x %>%
+  na.omit() %>%
+  gather(Type, Value, EnglishEyesWholeProportion:IcelandicMouthWholeProportion)
+  
+ex1_ice$Type <- gsub("WholeProportion", "", ex1_ice$Type)
+
+ex1_ice <- separate(ex1_ice, Type, into = c("Language", "Region"), sep = "\\B[A-Z]", remove = TRUE)
+
+ex1_ice$Region <- gsub("yes", "Eyes", ex1_ice$Region)
+ex1_ice$Region <- gsub("outh", "Mouth", ex1_ice$Region)
+
+ex1_ice_mean <- aggregate(Value ~ Language + Region, ex1_ice, mean)
+ex1_ice_se <- aggregate(Value ~ Language + Region, ex1_ice, se)
+ex1_ice_agg <- inner_join(ex1_ice_mean, ex1_ice_se, by = c("Language" = "Language", "Region" = "Region"))
+names(ex1_ice_agg) <- c("Language", "Region", "Mean", "SE")
+
+load("/Users/Timo/Downloads/Experiment 1_English_Spanish.RData")
+ex1_spa <- x %>% 
+  na.omit() %>%
+  gather(Type, Value, English_Eyes_Whole_Proportion:Spanish_Whole_Mouth_Proportion)
+
+ex1_spa$Type <- gsub("_Whole", "", ex1_spa$Type)
+ex1_spa$Type <- gsub("_Proportion", "", ex1_spa$Type)
+
+ex1_spa <- separate(ex1_spa, Type, into = c("Language", "Region"), sep = "\\_", remove = TRUE)
+
+ex1_spa_mean <- aggregate(Value ~ Language + Region, ex1_spa, mean)
+ex1_spa_se <- aggregate(Value ~ Language + Region, ex1_spa, se)
+ex1_spa_agg <- inner_join(ex1_spa_mean, ex1_spa_se, by = c("Language" = "Language", "Region" = "Region"))
+names(ex1_spa_agg) <- c("Language", "Region", "Mean", "SE")
+
+```
+
+## Results
+
+```{r, message = FALSE}
+
+require(ggplot2)
+require(ggthemes)
+
+# RGB Blue: 68, 72, 160
+# RGB Green: 0, 191, 76
+
+p_ex1_ice <- ggplot(ex1_ice_agg, aes(x = Language, y = Mean, fill = Region)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_errorbar(aes(ymin = Mean - SE, ymax = Mean + SE), 
+                position = position_dodge(0.9), width = 0.1, 
+                size = 0.5) +
+  scale_fill_manual(values = c("#444878", "#00bf4c")) +
+  xlab("") +
+  ylab("Mean Proportion Fixation Duration (A)") +
+  theme_tufte() +
+  theme(axis.title.x = element_text(size = 16),
+        axis.text.x = element_text(size = 16),
+        axis.title.y = element_text(size = 16),
+        axis.text.y = element_text(size = 16),
+        legend.title = element_text(size = 16),
+        legend.text = element_text(size = 16))
+    
+p_ex1_ice
+
+p_ex1_spa <- ggplot(ex1_spa_agg, aes(x = Language, y = Mean, fill = Region)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_errorbar(aes(ymin = Mean - SE, ymax = Mean + SE), 
+                position = position_dodge(0.9), width = 0.1, 
+                size = 0.5) +
+  scale_fill_manual(values = c("#444878", "#00bf4c")) +
+  xlab("") +
+  ylab("Mean Proportion Fixation Duration (B)") +
+  theme_tufte() +
+  theme(axis.title.x = element_text(size = 16),
+        axis.text.x = element_text(size = 16),
+        axis.title.y = element_text(size = 16),
+        axis.text.y = element_text(size = 16),
+        legend.title = element_text(size = 16),
+        legend.text = element_text(size = 16))
+    
+p_ex1_spa
+
+
+```
+
+## Statistical Tests
+
+### Overall
+
+```{r, message = FALSE, warning = FALSE}
+
+require(effsize)
+require(pwr)
+
+icelandic1_mouth <- filter(ex1_ice, Language == "Icelandic" & Region == "Mouth")
+icelandic1_eyes <- filter(ex1_ice, Language == "Icelandic" & Region == "Eyes")
+english1_mouth <- filter(ex1_ice, Language == "English" & Region == "Mouth")
+english1_eyes <- filter(ex1_ice, Language == "English" & Region == "Eyes")
+spanish1_mouth <- filter(ex1_spa, Language == "Spanish" & Region == "Mouth") 
+spanish1_eyes <- filter(ex1_spa, Language == "Spanish" & Region == "Eyes") 
+english2_mouth <- filter(ex1_spa, Language == "English" & Region == "Mouth")
+english2_eyes <- filter(ex1_spa, Language == "English" & Region == "Eyes")
+
+mouth_overall <- c(icelandic1_mouth$Value, spanish1_mouth$Value)
+eyes_overall <- c(icelandic1_eyes$Value , spanish1_eyes$Value)
+
+t.test(mouth_overall, eyes_overall, conf.level = 0.999)
+cohen.d(mouth_overall, eyes_overall, conf.level = 0.999)
+```
+  
+### Paired Samples: English/Icelandic 
+  
+```{r}
+
+icelandic1 <- -1* (icelandic1_eyes$Value - icelandic1_mouth$Value)
+mean(icelandic1)
+sd(icelandic1)
+
+english1 <- -1*(english1_eyes$Value - english1_mouth$Value)
+mean(english1)
+sd(english1)
+
+t.test(icelandic1, english1, paired = TRUE, conf.level = 0.999)
+cohen.d(icelandic1, english1)
+
+```
+
+```{r}
+
+spanish1 <- -1* (spanish1_eyes$Value - spanish1_mouth$Value)
+mean(spanish1)
+sd(spanish1)
+
+english2 <- -1*(english2_eyes$Value - english2_mouth$Value)
+mean(english2)
+sd(english2)
+
+t.test(spanish1, english2, paired = TRUE, conf.level = 0.999)
+cohen.d(spanish1, english2)
+
+```
+
+## Statistical Power
+
+```{r}
+t.power <- function(m1, m2, sd1, sd2, n1, n2, nsim, alpha)
+{
+  lower <- qt(alpha/2, df = sum(n1, n2) - 2)
+  upper <- qt(1 - alpha/2, df = sum(n1, n2) - 2)
+  ts <- replicate(nsim,
+                 t.test(rnorm(n1, mean = m1, sd = sd1),
+                        rnorm(n2, mean = m2, sd = sd2))$statistic)
+  
+  return(sum(ts < lower | ts > upper) / nsim)
+}
+
+t.power(mean(icelandic1), mean(english1), sd(icelandic1), sd(english1),
+        length(icelandic1), length(english1), 1000, alpha = 0.001)
+
+t.power(mean(spanish1), mean(english2), sd(spanish1), sd(english2),
+        length(spanish1), length(english2), 1000, alpha = 0.001)
+```
+
+# Experiment 2
+
+- New cohort of 30 bilingual English / Spanish speakers
+- Identical procedure to Experiment 1
+
+```{r}
+load("/Users/Timo/Downloads/Experiment 2_English_Spanish_Bilingual.RData")
+
+ex2_spa <- x %>% 
+  na.omit() %>%
+  gather(Type, Value, English_Eyes_Whole_Proportion:Spanish_Mouth_Whole_Proportion)
+
+ex2_spa$Type <- gsub("_Whole_Proportion", "", ex2_spa$Type)
+ex2_spa <- separate(ex2_spa, Type, into = c("Language", "Region"), sep = "\\_", remove = TRUE)
+
+ex2_spa_mean <- aggregate(Value ~ Language + Region, ex2_spa, mean)
+ex2_spa_se <- aggregate(Value ~ Language + Region, ex2_spa, se)
+ex2_spa_agg <- inner_join(ex2_spa_mean, ex2_spa_se, by = c("Language" = "Language", "Region" = "Region"))
+names(ex2_spa_agg) <- c("Language", "Region", "Mean", "SE")
+```
+
+## Plot
+
+```{r}
+p_ex2_spa <- ggplot(ex2_spa_agg, aes(x = Language, y = Mean, fill = Region)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_errorbar(aes(ymin = Mean - SE, ymax = Mean + SE), 
+                position = position_dodge(0.9), width = 0.1, 
+                size = 0.5) +
+  scale_fill_manual(values = c("#444878", "#00bf4c")) +
+  xlab("") +
+  ylab("Mean Proportion Fixation Duration (A)") +
+  theme_tufte() +
+  theme(axis.title.x = element_text(size = 16),
+        axis.text.x = element_text(size = 16),
+        axis.title.y = element_text(size = 16),
+        axis.text.y = element_text(size = 16),
+        legend.title = element_text(size = 16),
+        legend.text = element_text(size = 16))
+    
+p_ex2_spa
+```
+
+## Tests
+
+```{r}
+spanish2_mouth <- filter(ex2_spa, Language == "Spanish" & Region == "Mouth") 
+spanish2_eyes <- filter(ex2_spa, Language == "Spanish" & Region == "Eyes") 
+english3_mouth <- filter(ex2_spa, Language == "English" & Region == "Mouth")
+english3_eyes <- filter(ex2_spa, Language == "English" & Region == "Eyes")
+
+spanish2 <- -1 * (spanish2_eyes$Value - spanish2_mouth$Value)
+mean(spanish2)
+sd(spanish2)
+
+english3 <- -1 * (english3_eyes$Value - english3_mouth$Value)
+mean(english3)
+sd(english3)
+
+t.test(spanish2, english3, conf.level = 0.999, paired = TRUE)
+cohen.d(spanish2, english3)
+```
+
+## Statistical Power
+
+```{r}
+
+t.power(mean(spanish2), mean(english3), sd(spanish2), sd(english3),
+        length(spanish2), length(english3), 1000, alpha = 0.001)
+
+```
+## ANOVA
+
+```{r}
+
+require(car)
+
+anov_dat <- rbind(ex1_spa, ex2_spa)
+anov_dat$Region <- as.factor(anov_dat$Region)
+anov_dat$Condition <- as.factor(anov_dat$Condition)
+anov_dat$Language <- as.factor(anov_dat$Language)
+
+mono_eyes <- filter(anov_dat, Condition == "Mono_Task", Region == "Eyes")
+mono_mouth <- filter(anov_dat, Condition == "Mono_Task", Region == "Mouth")
+mono_diff <- -1 * (mono_eyes$Value - mono_mouth$Value)
+
+bi_eyes <- filter(anov_dat, Condition == "Bi_Task", Region == "Eyes")
+bi_mouth <- filter(anov_dat, Condition == "Bi_Task", Region == "Mouth")
+bi_diff <- -1 * (bi_eyes$Value - bi_mouth$Value)
+
+anova1_dat <- data.frame(
+  Difference = c(spanish1, english2, spanish2, english3),
+Language = factor(rep(c("Spanish", "English", "Spanish", "English"), times = c(length(spanish1), length(english2), length(spanish2), length(english3)))),
+Expertise = factor(rep(c("Monolingual", "Bilingual"), times = c(length(c(spanish1, english2)), length(c(spanish2, english3))))))
+
+str(anova1_dat)
+summary(anova1_dat)
+xtabs(Difference ~ Language + Expertise, anova1_dat)
+
+sumary(lm(Difference ~ Expertise*Language, anova1_dat))
+```
+# Experiment 3
+
+- New cohort of 30 monolingual English speakers
+- Identical to Experiment 1 except for the omission of the auditory sequence at the end of the movies. 
+
+```{r}
+load("/Users/Timo/Downloads/Experiment 3_English_Icelandic_NoTask.RData")
+ex3_ice <- x %>%
+  na.omit() %>%
+  gather(Type, Value, English_Eyes_Whole_Proportion:Icelandic_Mouth_Whole_Proportion)
+  
+ex3_ice$Type <- gsub("_Whole_Proportion", "", ex3_ice$Type)
+
+ex3_ice <- separate(ex3_ice, Type, into = c("Language", "Region"), sep = "\\_", remove = TRUE)
+
+ex3_ice_mean <- aggregate(Value ~ Language + Region, ex3_ice, mean)
+ex3_ice_se <- aggregate(Value ~ Language + Region, ex3_ice, se)
+ex3_ice_agg <- inner_join(ex1_ice_mean, ex3_ice_se, by = c("Language" = "Language", "Region" = "Region"))
+names(ex3_ice_agg) <- c("Language", "Region", "Mean", "SE")
+```
+
+## Plot
+
+```{r}
+p_ex3_ice <- ggplot(ex3_ice_agg, aes(x = Language, y = Mean, fill = Region)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_errorbar(aes(ymin = Mean - SE, ymax = Mean + SE), 
+                position = position_dodge(0.9), width = 0.1, 
+                size = 0.5) +
+  scale_fill_manual(values = c("#444878", "#00bf4c")) +
+  xlab("") +
+  ylab("Mean Proportion Fixation Duration (B)") +
+  theme_tufte() +
+  theme(axis.title.x = element_text(size = 16),
+        axis.text.x = element_text(size = 16),
+        axis.title.y = element_text(size = 16),
+        axis.text.y = element_text(size = 16),
+        legend.title = element_text(size = 16),
+        legend.text = element_text(size = 16))
+    
+p_ex3_ice
+```
+
+## Tests
+
+```{r}
+
+icelandic2_mouth <- filter(ex3_ice, Language == "Icelandic" & Region == "Mouth")
+icelandic2_eyes <- filter(ex3_ice, Language == "Icelandic" & Region == "Eyes")
+english4_mouth <- filter(ex3_ice, Language == "English" & Region == "Mouth")
+english4_eyes <- filter(ex3_ice, Language == "English" & Region == "Eyes")
+
+icelandic2 <- -1* (icelandic2_eyes$Value - icelandic2_mouth$Value)
+mean(icelandic2)
+sd(icelandic2)
+
+english4 <- -1*(english4_eyes$Value - english4_mouth$Value)
+mean(english4)
+sd(english4)
+
+diff_ice2_eng4 <- -1 * (icelandic2 - english4)
+
+t.test(icelandic2, english4, paired = TRUE, conf.level = 0.999)
+cohen.d(icelandic2, english4)
+
+```
+
+## Statistical Power
+
+```{r}
+
+t.power(mean(icelandic2), mean(english4), sd(icelandic2), sd(english4),
+        length(icelandic2), length(english4), 1000, alpha = 0.001)
+
+```
+
+## ANOVA
+
+```{r}
+
+anov2_dat <- rbind(ex1_ice, ex3_ice)
+anov2_dat$Condition <- as.factor(anov2_dat$Condition)
+anov2_dat$Language <- as.factor(anov2_dat$Language)
+
+anova(aov(Value ~ Language * Condition, anov2_dat))
+
+```
